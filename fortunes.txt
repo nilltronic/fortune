@@ -7,32 +7,17 @@ Someone will trade you a shiny today.
 Fortune favours the one who backs up their save file.
 A small change will fix a big problem.
 Your next trade will go through on the first try.
-A loose link cable is only a loose link cable. Reseat it.
-The ROM dump you fear will be fine. Hash it anyway.
 An old cart in a charity shop is waiting for you.
 Today your code compiles first time. Do not question it.
 A snail you back will cross the line first. Probably.
-You will find the missing resistor right where you looked first.
-The best firmware is the one you have already flashed.
 A cat will approve of your next build.
-Your solder iron is hot. Your patience should be too.
 Press START. Fortune smiles on those who skip the intro.
 A shiny awaits you in the long grass.
 Never trust a battery you have not tested.
-The bug is in the line you just said was fine.
 Your save file is safe. Back it up anyway.
-Fortune favours the ESP32 that reboots at the right moment.
 Somebody will love the thing you built for fun.
 A stubborn cartridge will finally boot after a gentle blow. Do not tell anyone.
 Today is a good day to try the thing that might not work.
-The answer is in the datasheet. It was always in the datasheet.
 You will turn a pile of parts into something delightful.
-A hundred small fixes beat one grand rewrite.
-Check the ground wire. No, really. Check it.
-The printer will jam only when someone is watching.
 A tiny pixel will make a big difference.
 A rare card is hiding in the next binder you open.
-Your next prototype will work before your coffee goes cold.
-The wires you labelled will thank you in six months.
-Good news arrives by link cable.
-Everything is a hack until it works. Then it is engineering.
