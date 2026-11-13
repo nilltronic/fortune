@@ -1,5 +1,7 @@
 # Cat Printer Fortune Teller
 
+Press a button an the esp32 to receive a printed fortune on the cat printer.
+
 ToDo:
 
 Upload sketch
