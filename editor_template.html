@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Fortune Pack Editor</title>
+<style>
+:root{--bg:#fde9b4;--card:#fff6dc;--line:#e8cc8a;--ink:#222;--amber:#f5b21b;--pill:#fbdc88;--navy:#2b3a8a;--muted:#6b5a2e;--warn:#fff0c2;--bad:#f3c1b6}
+*{box-sizing:border-box}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--ink);margin:0;padding:16px 12px 48px}
+.wrap{max-width:1040px;margin:0 auto}
+.slip{background:
+ linear-gradient(var(--navy),var(--navy)) left 8px top 8px/30px 7px no-repeat,
+ linear-gradient(var(--navy),var(--navy)) right 8px top 8px/30px 7px no-repeat,
+ linear-gradient(var(--navy),var(--navy)) left 8px bottom 8px/30px 7px no-repeat,
+ linear-gradient(var(--navy),var(--navy)) right 8px bottom 8px/30px 7px no-repeat,#fffdf6;
+ color:var(--navy);font-family:Georgia,'Times New Roman',serif;text-align:center;padding:24px 44px;margin:8px 0 12px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.slip h1{margin:0;font-size:1.6em;font-weight:normal}
+.slip p{margin:6px 0 0;font-size:.95em}
+nav{margin:0 0 12px;font-size:.95em}
+nav a{margin-right:14px}
+a{color:var(--navy)}
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:860px){.grid{grid-template-columns:1fr 440px;align-items:start}.sticky{position:sticky;top:12px}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 12px}
+.card h2{margin:0 0 8px;font-size:1.1em}
+label{display:block;font-weight:600;margin:8px 0 2px;font-size:.95em}
+input[type=text],select,textarea{width:100%;font-size:1em;padding:9px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-family:inherit}
+textarea{min-height:260px;resize:vertical;font-family:ui-monospace,Consolas,monospace;font-size:.95em;line-height:1.35}
+button{font-size:1em;padding:9px 14px;border:0;border-radius:8px;background:var(--amber);color:#2a2112;font-weight:600;cursor:pointer}
+button.alt{background:var(--pill)}
+button.quiet{background:transparent;border:1px solid var(--line);font-weight:500}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.row>*{flex:0 0 auto}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg label{margin:0;padding:7px 12px;font-weight:500;cursor:pointer;background:#fff}
+.seg input{display:none}
+.seg input:checked+span{font-weight:700}
+.seg label:has(input:checked){background:var(--pill)}
+small,.muted{color:var(--muted)}
+.hint{font-size:.88em;color:var(--muted);margin:4px 0 0}
+.count{font-size:.9em;color:var(--muted);margin-top:6px}
+.paper{background:#fff;border:1px solid var(--line);border-radius:6px;padding:0;line-height:0;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+#slip{width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges}
+.nav{display:flex;gap:8px;align-items:center;justify-content:center;margin:10px 0 4px;flex-wrap:wrap}
+.nav span{min-width:90px;text-align:center;font-weight:600}
+.preview-as{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:.9em}
+.preview-as label{display:flex;gap:6px;align-items:center;margin:0;font-weight:500}
+.preview-as select{width:auto;padding:4px 6px}
+#list{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff;margin-top:8px}
+#list div{padding:6px 10px;border-bottom:1px solid #f0e3bd;cursor:pointer;font-size:.92em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#list div.sel{background:var(--pill);font-weight:600}
+#list div.long{border-left:4px solid var(--amber)}
+#list b{display:inline-block;min-width:34px;color:var(--muted);font-weight:500}
+.msgs div{padding:8px 10px;border-radius:8px;margin:6px 0;font-size:.92em}
+.msgs .warn{background:var(--warn)}
+.msgs .bad{background:var(--bad)}
+.msgs .ok{background:#e4f1d6}
+footer{margin-top:18px;font-size:.9em;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="slip">
+    <h1>Fortune Pack Editor</h1>
+    <p>Write fortunes, jokes or kind words, and see exactly how each one will print.</p>
+  </header>
+  <nav><a href="index.html">Pack library</a><a href="https://github.com/nilltronic/fortune">GitHub</a></nav>
+
+  <div class="grid">
+    <div class="col">
+      <section class="card">
+        <h2>1. Pack details</h2>
+        <label for="heading">Heading (printed at the top of each slip)</label>
+        <input type="text" id="heading" maxlength="32" placeholder="FORTUNE" autocomplete="off">
+        <p class="hint">Leave empty to use FORTUNE. A trailing full stop is dropped.</p>
+        <label for="lucky">Lucky numbers</label>
+        <select id="lucky">
+          <option value="follow">Follow the device setting</option>
+          <option value="off">Never add them (good for jokes)</option>
+          <option value="on">Always add them</option>
+        </select>
+        <label for="fname">File name</label>
+        <div class="row" style="margin-top:0"><input type="text" id="fname" maxlength="24" style="flex:1 1 160px" autocomplete="off"><span class="muted">.txt</span></div>
+      </section>
+
+      <section class="card">
+        <h2>2. The fortunes</h2>
+        <div class="seg" role="radiogroup" aria-label="Layout">
+          <label><input type="radio" name="mode" value="lines" checked><span>One per line</span></label>
+          <label><input type="radio" name="mode" value="blocks"><span>Blank line between entries</span></label>
+        </div>
+        <p class="hint" id="modehint"></p>
+        <textarea id="text" spellcheck="true" placeholder="Type or paste your fortunes here"></textarea>
+        <div class="count" id="count"></div>
+        <div class="row">
+          <button id="btnBreak" class="alt" title="Insert a line break marker at the cursor">Insert line break</button>
+          <button id="btnOpen" class="alt">Open a file…</button>
+          <input type="file" id="file" accept=".txt,text/plain" hidden>
+          <button id="btnClear" class="quiet">Start again</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>3. Save it</h2>
+        <div class="row" style="margin-top:0">
+          <button id="btnDownload">Download .txt</button>
+          <button id="btnCopy" class="alt">Copy text</button>
+        </div>
+        <p class="hint">Then open your Fortune Printer's page, choose the file under <b>Upload a .txt file</b>, and press Upload. Using the same file name replaces the old copy.</p>
+        <div class="msgs" id="msgs"></div>
+      </section>
+    </div>
+
+    <div class="col sticky">
+      <section class="card">
+        <h2>Preview</h2>
+        <div class="paper"><canvas id="slip" width="384" height="150"></canvas></div>
+        <div class="nav">
+          <button id="prev" class="quiet" aria-label="Previous">◀</button>
+          <span id="pos"></span>
+          <button id="next" class="quiet" aria-label="Next">▶</button>
+          <button id="rand" class="alt">Random</button>
+          <button id="shuffle" class="quiet" title="Pick new sample lucky numbers">New numbers</button>
+        </div>
+        <div class="count" id="size" style="text-align:center"></div>
+        <div class="preview-as">
+          <span class="muted">Preview as if the device is set to:</span>
+          <label>Banner <select id="pBanner"><option value="1">on</option><option value="0">off</option></select></label>
+          <label>Lucky numbers <select id="pLucky"><option value="0">off</option><option value="1">on</option></select></label>
+          <label>Text <select id="pSize"><option value="1">bigger</option><option value="0">smaller</option></select></label>
+        </div>
+        <div id="list" role="listbox" aria-label="Entries"></div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    Everything happens in your browser; nothing is uploaded. The preview uses the same fonts and wrapping rules as the printer, so lines break in the same places.
+    Format: a first line <code># Heading</code>, optional <code># lucky: off</code>, then one fortune per line; write <code>\n</code> inside a line for a line break.
+  </footer>
+</div>
+
+<script>
+/*SLIP_JS*/
+</script>
+<script>
+(function () {
+  'use strict';
+  var F = /*FONTS_JSON*/null;
+  var fonts = { serif12: Slip.decodeFont(F.serif12), serif9: Slip.decodeFont(F.serif9) };
+  var MARK = '\\n';                      // the two typed characters: backslash, n
+  var MAX_UPLOAD = 100000, DEVICE_EDIT = 30000;
+  var $ = function (id) { return document.getElementById(id); };
+
+  var sel = 0, luckyText = '', nameTouched = false, entries = [], mode = 'lines';
+  var timer = null;
+
+  function getMode() { return document.querySelector('input[name=mode]:checked').value; }
+  function setMode(m) { document.querySelector('input[name=mode][value=' + m + ']').checked = true; mode = m; updateModeHint(); }
+
+  function updateModeHint() {
+    $('modehint').textContent = mode === 'blocks'
+      ? 'Type each entry on as many lines as you like and leave a blank line before the next one. Each line becomes a line break on the slip.'
+      : 'One fortune per line. For a line break inside one, type \\n (or press Insert line break); \\n\\n gives a gap.';
+  }
+
+  // ---------- text <-> entries ----------
+
+  function entriesFromText(text, m) {
+    var out = [], raw = text.replace(/\r/g, '');
+    if (m === 'blocks') {
+      raw.split(/\n\s*\n/).forEach(function (block) {
+        var ls = block.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l.length; });
+        if (ls.length) out.push(ls.join(MARK));
+      });
+    } else {
+      raw.split('\n').forEach(function (l) { l = l.trim(); if (l.length) out.push(l); });
+    }
+    return out;
+  }
+
+  function switchMode(to) {
+    var list = entriesFromText($('text').value, mode);
+    if (to === 'blocks') {
+      $('text').value = list.map(function (e) { return e.indexOf(MARK + MARK) >= 0 ? e : e.split(MARK).join('\n'); }).join('\n\n');
+    } else {
+      $('text').value = list.join('\n');
+    }
+    mode = to;
+    updateModeHint();
+  }
+
+  function cleanHeading(h) {
+    h = Slip.foldText(h || '').text.replace(/\n/g, ' ').trim().replace(/^#+/, '').trim();
+    while (h.slice(-1) === '.') h = h.slice(0, -1);
+    return h.trim().slice(0, 32);
+  }
+
+  function cleanName(n) {
+    n = (n || '').replace(/\.txt$/i, '');
+    var o = '';
+    for (var i = 0; i < n.length && o.length < 24; i++) {
+      var c = n[i];
+      if (/[A-Za-z0-9_-]/.test(c)) o += c; else if (c === ' ') o += '_';
+    }
+    return o || 'fortunes';
+  }
+
+  function slug(h) {
+    return (h || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'fortunes';
+  }
+
+  function buildFile() {
+    var lines = [], h = cleanHeading($('heading').value), lk = $('lucky').value;
+    if (h) lines.push('# ' + h);
+    if (lk === 'off') lines.push('# lucky: off');
+    if (lk === 'on') lines.push('# lucky: on');
+    entriesFromText($('text').value, mode).forEach(function (e) {
+      lines.push(Slip.foldText(e).text.replace(/\n/g, ''));
+    });
+    return lines.join('\n') + '\n';
+  }
+
+  // ---------- opening a file ----------
+
+  function loadFileText(text, fileName) {
+    var heading = '', lucky = 'follow', body = [], inHeader = true, ignored = 0;
+    text.replace(/\r/g, '').split('\n').forEach(function (raw) {
+      var l = raw.trim();
+      if (!l.length) return;
+      if (inHeader && l[0] === '#') {
+        var b = l.slice(1).trim(), low = b.toLowerCase();
+        if (low.indexOf('lucky:') === 0) {
+          var v = low.slice(6).trim();
+          if (['off', 'no', '0', 'false'].indexOf(v) >= 0) lucky = 'off';
+          else if (['on', 'yes', '1', 'true'].indexOf(v) >= 0) lucky = 'on';
+        } else if (!heading && b) heading = b;
+        return;
+      }
+      inHeader = false;
+      if (l[0] === '#') { ignored++; return; }
+      body.push(l);
+    });
+    $('heading').value = cleanHeading(heading);
+    $('lucky').value = lucky;
+    setMode('lines');
+    $('text').value = body.join('\n');
+    if (fileName) { $('fname').value = cleanName(fileName); nameTouched = true; }
+    sel = 0;
+    refresh(true);
+  }
+
+  // ---------- rendering ----------
+
+  function effective() {
+    var lk = $('lucky').value;
+    if (lk === 'off') return false;
+    if (lk === 'on') return true;
+    return $('pLucky').value === '1';
+  }
+
+  function drawSlip() {
+    var raw = entries.length ? entries[Math.min(sel, entries.length - 1)] : 'Your fortune will appear here.';
+    var heading = cleanHeading($('heading').value);
+    var s = Slip.renderSlip({
+      fonts: fonts,
+      fortune: Slip.foldText(raw).text.replace(/\n/g, ''),
+      heading: heading,
+      showTitle: $('pBanner').value === '1',
+      luckyText: effective() ? luckyText : '',
+      bigText: $('pSize').value === '1'
+    });
+    var cv = $('slip');
+    cv.width = s.w; cv.height = s.h;
+    var ctx = cv.getContext('2d'), img = ctx.createImageData(s.w, s.h);
+    for (var i = 0; i < s.px.length; i++) {
+      var v = s.px[i] ? 24 : 255;
+      img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    $('size').textContent = 'About ' + Math.round(s.h / 8) + ' mm of paper (printed at 8 dots per mm)';
+    $('pos').textContent = entries.length ? (Math.min(sel, entries.length - 1) + 1) + ' of ' + entries.length : 'no entries';
+    return s;
+  }
+
+  function renderList() {
+    var box = $('list');
+    box.innerHTML = '';
+    if (!entries.length) { box.style.display = 'none'; return; }
+    box.style.display = '';
+    var frag = document.createDocumentFragment();
+    entries.forEach(function (e, i) {
+      var d = document.createElement('div');
+      var shown = e.split(MARK).join('  ⏎  ');
+      var b = document.createElement('b'); b.textContent = (i + 1);
+      d.appendChild(b); d.appendChild(document.createTextNode(shown));
+      if (i === sel) d.className = 'sel';
+      if (e.length > 140) d.className += ' long';
+      d.onclick = function () { sel = i; drawSlip(); markSel(); };
+      frag.appendChild(d);
+    });
+    box.appendChild(frag);
+  }
+
+  function markSel() {
+    var kids = $('list').children;
+    for (var i = 0; i < kids.length; i++) kids[i].className = (i === sel ? 'sel' : '') + (entries[i] && entries[i].length > 140 ? ' long' : '');
+    if (kids[sel] && kids[sel].scrollIntoView) kids[sel].scrollIntoView({ block: 'nearest' });
+  }
+
+  function checks() {
+    var out = [], text = $('text').value;
+    var raws = entriesFromText(text, mode);
+    var conv = 0, dropped = {}, droppedN = 0, hashLines = 0, dup = 0, seen = {}, tall = 0;
+    raws.forEach(function (e) {
+      var f = Slip.foldText(e);
+      conv += f.converted;
+      (e.match(/[^\x20-\x7e\u2018\u2019\u201c\u201d\u2013\u2014\u2026\u00a0\t\r\n]/g) || []).forEach(function (ch) { dropped[ch] = 1; droppedN++; });
+      if (e[0] === '#') hashLines++;
+      var k = f.text.toLowerCase();
+      if (seen[k]) dup++; else seen[k] = 1;
+      var tmp = [];
+      Slip.layoutText(fonts.serif12, f.text, Slip.PRINT_WIDTH - 2 * (Slip.DEFAULTS.edgeMargin + 20), tmp);
+      if (tmp.length > 9) tall++;
+    });
+    var size = buildFile().length;
+    if (!raws.length) out.push(['warn', 'No fortunes yet: add at least one line.']);
+    if (conv) out.push(['ok', conv + ' curly quote/dash character' + (conv > 1 ? 's' : '') + ' will be saved as plain ones.']);
+    if (droppedN) out.push(['warn', droppedN + ' character' + (droppedN > 1 ? 's' : '') + ' the printer can\'t print will be dropped: ' + Object.keys(dropped).join(' ')]);
+    if (hashLines) out.push(['bad', hashLines + ' entr' + (hashLines > 1 ? 'ies start' : 'y starts') + ' with # and will be treated as a setting, not printed.']);
+    if (dup) out.push(['warn', dup + ' duplicate entr' + (dup > 1 ? 'ies' : 'y') + '.']);
+    if (tall) out.push(['warn', tall + ' entr' + (tall > 1 ? 'ies are' : 'y is') + ' more than 9 lines tall (long slips).']);
+    if (size > MAX_UPLOAD) out.push(['bad', 'File is ' + Math.round(size / 1024) + ' KB: over the 100 KB upload limit.']);
+    else if (size > DEVICE_EDIT) out.push(['warn', 'File is ' + Math.round(size / 1024) + ' KB: it uploads fine, but is too big for the device\'s own text editor (30 KB).']);
+    var box = $('msgs'); box.innerHTML = '';
+    out.forEach(function (m) { var d = document.createElement('div'); d.className = m[0]; d.textContent = m[1]; box.appendChild(d); });
+    $('count').textContent = raws.length + ' fortune' + (raws.length === 1 ? '' : 's') + ' · ' + (size / 1024).toFixed(1) + ' KB';
+    $('btnDownload').disabled = !raws.length;
+  }
+
+  function refresh(full) {
+    mode = getMode();
+    entries = entriesFromText($('text').value, mode);
+    if (sel >= entries.length) sel = Math.max(0, entries.length - 1);
+    if (!nameTouched) $('fname').value = slug(cleanHeading($('heading').value));
+    drawSlip();
+    if (full) renderList();
+    else { clearTimeout(timer); timer = setTimeout(function () { renderList(); checks(); save(); }, 200); return; }
+    checks(); save();
+  }
+
+  // ---------- autosave ----------
+
+  function save() {
+    try {
+      localStorage.setItem('fortuneEditorDraft', JSON.stringify({
+        heading: $('heading').value, lucky: $('lucky').value, text: $('text').value, mode: mode,
+        fname: $('fname').value, touched: nameTouched
+      }));
+    } catch (e) { /* storage may be unavailable */ }
+  }
+
+  function restore() {
+    try {
+      var d = JSON.parse(localStorage.getItem('fortuneEditorDraft') || 'null');
+      if (!d) return false;
+      $('heading').value = d.heading || ''; $('lucky').value = d.lucky || 'follow';
+      setMode(d.mode === 'blocks' ? 'blocks' : 'lines');
+      $('text').value = d.text || ''; $('fname').value = d.fname || ''; nameTouched = !!d.touched;
+      return !!(d.text || d.heading);
+    } catch (e) { return false; }
+  }
+
+  // ---------- buttons ----------
+
+  function download() {
+    var blob = new Blob([buildFile()], { type: 'text/plain;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = cleanName($('fname').value) + '.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+
+  function copyText() {
+    var t = buildFile();
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { flash('Copied'); });
+    else { var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); flash('Copied'); }
+  }
+
+  function flash(msg) {
+    var b = $('btnCopy'), old = b.textContent;
+    b.textContent = msg; setTimeout(function () { b.textContent = old; }, 1200);
+  }
+
+  function insertBreak() {
+    var ta = $('text'), s = ta.selectionStart, e = ta.selectionEnd;
+    ta.value = ta.value.slice(0, s) + MARK + ta.value.slice(e);
+    ta.selectionStart = ta.selectionEnd = s + MARK.length;
+    ta.focus(); refresh(false);
+  }
+
+  function newNumbers() { luckyText = Slip.makeLucky(Math.random); drawSlip(); }
+
+  $('heading').addEventListener('input', function () { refresh(false); });
+  $('lucky').addEventListener('change', function () { refresh(false); });
+  $('fname').addEventListener('input', function () { nameTouched = true; save(); });
+  $('text').addEventListener('input', function () { refresh(false); });
+  document.querySelectorAll('input[name=mode]').forEach(function (r) {
+    r.addEventListener('change', function () { switchMode(getMode()); refresh(true); });
+  });
+  ['pBanner', 'pLucky', 'pSize'].forEach(function (id) { $(id).addEventListener('change', drawSlip); });
+  $('prev').onclick = function () { if (entries.length) { sel = (sel - 1 + entries.length) % entries.length; drawSlip(); markSel(); } };
+  $('next').onclick = function () { if (entries.length) { sel = (sel + 1) % entries.length; drawSlip(); markSel(); } };
+  $('rand').onclick = function () { if (entries.length) { sel = Math.floor(Math.random() * entries.length); newNumbers(); markSel(); } };
+  $('shuffle').onclick = newNumbers;
+  $('btnBreak').onclick = insertBreak;
+  $('btnDownload').onclick = download;
+  $('btnCopy').onclick = copyText;
+  $('btnOpen').onclick = function () { $('file').click(); };
+  $('file').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () { loadFileText(String(r.result), f.name); };
+    r.readAsText(f);
+    this.value = '';
+  });
+  $('btnClear').onclick = function () {
+    if (!confirm('Clear everything and start a new pack?')) return;
+    $('heading').value = ''; $('lucky').value = 'follow'; $('text').value = ''; $('fname').value = ''; nameTouched = false;
+    setMode('lines'); sel = 0; refresh(true);
+  };
+
+  // ---------- start ----------
+
+  luckyText = Slip.makeLucky(Math.random);
+  updateModeHint();
+  var pack = new URLSearchParams(location.search).get('pack');
+  if (pack && /^[\w.\-\/]+$/.test(pack) && pack.indexOf('..') < 0) {
+    fetch(pack).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then(function (t) { loadFileText(t, pack.split('/').pop()); })
+      .catch(function () { restore(); refresh(true); });
+  } else {
+    if (!restore()) {
+      $('text').value = 'A bug you fix today will be a feature tomorrow.\nYou will soon find a long-lost Game Boy in a drawer.\nWhy did the chicken cross the road?\\nTo get to the other side!';
+      $('heading').value = 'Fortune';
+    }
+    refresh(true);
+  }
+})();
+</script>
+</body>
+</html>
