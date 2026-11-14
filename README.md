@@ -16,7 +16,7 @@ My arduino ide settings for esp32 c6
 
 Added fortunes from
 https://joshmadison.com/2008/04/20/fortune-cookie-fortunes/
-they need some editing
+they have been edited slightly, but I have tried to keep the feel of the originals.
 
 # Fortune Printer Packs
 
