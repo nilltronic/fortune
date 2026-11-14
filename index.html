@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Fortune Printer Packs</title>
+<style>
+:root{--bg:#fde9b4;--card:#fff6dc;--line:#e8cc8a;--ink:#222;--amber:#f5b21b;--pill:#fbdc88;--navy:#2b3a8a;--muted:#6b5a2e}
+*{box-sizing:border-box}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--ink);margin:0;padding:16px 12px 48px}
+.wrap{max-width:900px;margin:0 auto}
+.slip{background:
+ linear-gradient(var(--navy),var(--navy)) left 8px top 8px/30px 7px no-repeat,
+ linear-gradient(var(--navy),var(--navy)) right 8px top 8px/30px 7px no-repeat,
+ linear-gradient(var(--navy),var(--navy)) left 8px bottom 8px/30px 7px no-repeat,
+ linear-gradient(var(--navy),var(--navy)) right 8px bottom 8px/30px 7px no-repeat,#fffdf6;
+ color:var(--navy);font-family:Georgia,'Times New Roman',serif;text-align:center;padding:26px 44px;margin:8px 0 14px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.slip h1{margin:0;font-size:1.7em;font-weight:normal}
+.slip p{margin:6px 0 0}
+a{color:var(--navy)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 14px}
+.card h2,.card h3{margin:0 0 6px}
+.steps{margin:6px 0 0;padding-left:20px}
+.steps li{margin:4px 0}
+.grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:700px){.grid{grid-template-columns:1fr 1fr}}
+.pack{display:flex;flex-direction:column;gap:8px}
+.paper{background:#fff;border:1px solid var(--line);border-radius:6px;line-height:0;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.paper canvas{width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges}
+.meta{font-size:.9em;color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-block;padding:9px 14px;border-radius:8px;background:var(--amber);color:#2a2112;font-weight:600;text-decoration:none;border:0;font-size:1em;cursor:pointer;font-family:inherit}
+.btn.alt{background:var(--pill)}
+.btn.quiet{background:transparent;border:1px solid var(--line);font-weight:500}
+#status{padding:12px;border-radius:8px;background:var(--pill);margin:0 0 14px}
+footer{margin-top:20px;font-size:.9em;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="slip">
+    <h1>Fortune Printer Packs</h1>
+    <p>Fortunes, jokes and kind words, ready to print.</p>
+  </header>
+
+  <section class="card">
+    <h2>How to use a pack</h2>
+    <ol class="steps">
+      <li>Press <b>Download</b> on a pack below (or open it in the editor first to tweak it).</li>
+      <li>Open your Fortune Printer's page (<code>fortune.local</code>), and under <b>Upload a .txt file</b> choose the file you downloaded.</li>
+      <li>Pick it in <b>Print from</b>, or leave that on "All files mixed".</li>
+    </ol>
+    <p class="meta">Tip: if your phone is on the printer's own "FortunePrinter" WiFi it may have no internet. Download on home WiFi or mobile data, then reconnect to upload.</p>
+    <div class="row" style="margin-top:10px">
+      <a class="btn alt" href="editor.html">Make your own pack</a>
+      <a class="btn quiet" href="https://github.com/nilltronic/fortune" id="repoLink">GitHub repository</a>
+    </div>
+  </section>
+
+  <div id="status">Loading packs…</div>
+  <div class="grid" id="packs"></div>
+
+  <footer>
+    Packs are shared under CC0 (public domain). Want to add one? Build it in the <a href="editor.html">editor</a>, then see the
+    <a href="https://github.com/nilltronic/fortune/blob/main/CONTRIBUTING.md">contributing guide</a>.
+  </footer>
+</div>
+
+<script>
+/* slip.js - exact JavaScript port of the Fortune Printer's slip layout.
+ *
+ * Mirrors cat_printer.h: Adafruit GFX custom-font text measuring and drawing,
+ * pixel-width word wrapping, \n line breaks, the heading, the four corner
+ * blocks and the lucky numbers line. Works in the browser and in Node.
+ */
+(function (root) {
+  'use strict';
+
+  var PRINT_WIDTH = 384;
+  var DEFAULTS = { edgeMargin: 10, blockW: 34, blockH: 7, luckyCount: 6, luckyMax: 59 };
+
+  // ---------- fonts (data converted from Adafruit's FreeSerif headers) ----------
+
+  function decodeFont(f) {
+    var bin = typeof atob === 'function' ? atob(f.bitmap) : Buffer.from(f.bitmap, 'base64').toString('binary');
+    var bm = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bm[i] = bin.charCodeAt(i);
+    return { first: f.first, last: f.last, yAdvance: f.yAdvance, glyphs: f.glyphs, bitmap: bm };
+  }
+
+  // Adafruit_GFX::getTextBounds for a custom font, wrapping off, starting at 0,0
+  function textBounds(font, str) {
+    var x = 0, y = 0, minx = 0x7fff, miny = 0x7fff, maxx = -1, maxy = -1;
+    for (var i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i);
+      if (c === 10) { x = 0; y += font.yAdvance; }
+      else if (c !== 13) {
+        if (c >= font.first && c <= font.last) {
+          var g = font.glyphs[c - font.first];
+          var gw = g[1], gh = g[2], xa = g[3], xo = g[4], yo = g[5];
+          var x1 = x + xo, y1 = y + yo, x2 = x1 + gw - 1, y2 = y1 + gh - 1;
+          if (x1 < minx) minx = x1;
+          if (y1 < miny) miny = y1;
+          if (x2 > maxx) maxx = x2;
+          if (y2 > maxy) maxy = y2;
+          x += xa;
+        }
+      }
+    }
+    var r = { x1: 0, y1: 0, w: 0, h: 0 };
+    if (maxx >= minx) { r.x1 = minx; r.w = maxx - minx + 1; }
+    if (maxy >= miny) { r.y1 = miny; r.h = maxy - miny + 1; }
+    return r;
+  }
+
+  function pxWidth(font, s) { return textBounds(font, s).w; }
+
+  // ---------- 1-bit canvas ----------
+
+  function makeCanvas(w, h) { return { w: w, h: h, px: new Uint8Array(w * h) }; }
+
+  function setPx(cv, x, y) {
+    if (x >= 0 && y >= 0 && x < cv.w && y < cv.h) cv.px[y * cv.w + x] = 1;
+  }
+
+  function fillRect(cv, x, y, w, h) {
+    for (var yy = 0; yy < h; yy++) for (var xx = 0; xx < w; xx++) setPx(cv, x + xx, y + yy);
+  }
+
+  // Adafruit_GFX::drawChar for custom fonts (size 1) plus the cursor advance
+  function drawText(cv, font, cx, baseline, str) {
+    for (var i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i);
+      if (c < font.first || c > font.last) continue;
+      var g = font.glyphs[c - font.first];
+      var bo = g[0], w = g[1], h = g[2], xa = g[3], xo = g[4], yo = g[5];
+      if (w > 0 && h > 0) {
+        var bits = 0, bit = 0;
+        for (var yy = 0; yy < h; yy++) {
+          for (var xx = 0; xx < w; xx++) {
+            if (!(bit++ & 7)) bits = font.bitmap[bo++];
+            if (bits & 0x80) setPx(cv, cx + xo + xx, baseline + yo + yy);
+            bits = (bits << 1) & 0xff;
+          }
+        }
+      }
+      cx += xa;
+    }
+  }
+
+  // ---------- text rules (same as the sketch) ----------
+
+  // What the device does to text on upload/save/print: curly quotes and dashes
+  // become plain ones, other non-ASCII is dropped, CRs and control characters go.
+  function foldText(s) {
+    var out = '', converted = 0, dropped = 0;
+    for (var i = 0; i < s.length; i++) {
+      var ch = s[i], c = s.charCodeAt(i);
+      if (c === 10) { out += '\n'; continue; }
+      if (c === 13) continue;
+      if (c === 9) { out += ' '; continue; }
+      if (c >= 32 && c < 127) { out += ch; continue; }
+      if (c === 0x2018 || c === 0x2019) { out += "'"; converted++; }
+      else if (c === 0x201c || c === 0x201d) { out += '"'; converted++; }
+      else if (c === 0x2013 || c === 0x2014) { out += '-'; converted++; }
+      else if (c === 0x2026) { out += '...'; converted++; }
+      else if (c === 0xa0) { out += ' '; converted++; }
+      else dropped++;
+    }
+    return { text: out, converted: converted, dropped: dropped };
+  }
+
+  function trim(s) { return s.replace(/^\s+|\s+$/g, ''); }
+
+  // Word wrap by measured pixel width
+  function wrapPx(font, text, maxPx, out) {
+    var line = '';
+    var i = 0, n = text.length;
+    while (i < n) {
+      while (i < n && text[i] === ' ') i++;
+      var j = i;
+      while (j < n && text[j] !== ' ') j++;
+      var word = text.substring(i, j);
+      i = j;
+      if (word.length === 0) break;
+      var trial = line.length ? line + ' ' + word : word;
+      if (line.length === 0 || pxWidth(font, trial) <= maxPx) line = trial;
+      else { out.push(line); line = word; }
+    }
+    if (line.length) out.push(line);
+  }
+
+  // Split on the two typed characters \n, wrap each piece, empty piece = gap
+  function layoutText(font, text, maxPx, out) {
+    var pos = 0;
+    while (true) {
+      var nl = text.indexOf('\\n', pos);
+      var seg = trim(nl < 0 ? text.substring(pos) : text.substring(pos, nl));
+      if (seg.length) wrapPx(font, seg, maxPx, out);
+      else out.push('');
+      if (nl < 0) break;
+      pos = nl + 2;
+    }
+    while (out.length && out[out.length - 1].length === 0) out.pop();
+    while (out.length && out[0].length === 0) out.shift();
+  }
+
+  // "Lucky numbers: 4  11  23  29  37  52" (distinct, sorted); rnd() gives 0..1
+  function makeLucky(rnd, count, max) {
+    count = count || DEFAULTS.luckyCount;
+    max = max || DEFAULTS.luckyMax;
+    var nums = [];
+    while (nums.length < count) {
+      var v = 1 + Math.floor(rnd() * max);
+      if (nums.indexOf(v) < 0) nums.push(v);
+    }
+    nums.sort(function (a, b) { return a - b; });
+    return 'Lucky numbers: ' + nums.join('  ');
+  }
+
+  // ---------- the slip ----------
+
+  /* o = {
+   *   fonts: {serif12, serif9} (decoded), fortune, heading, showTitle (bool),
+   *   luckyText ("" = no lucky numbers line), bigText (bool, default true),
+   *   edgeMargin, blockW, blockH (optional)
+   * }  ->  {w, h, px, lines}
+   */
+  function renderSlip(o) {
+    var EM = o.edgeMargin != null ? o.edgeMargin : DEFAULTS.edgeMargin;
+    var BW = o.blockW != null ? o.blockW : DEFAULTS.blockW;
+    var BH = o.blockH != null ? o.blockH : DEFAULTS.blockH;
+    var bodyFont = o.bigText === false ? o.fonts.serif9 : o.fonts.serif12;
+    var smallFont = o.fonts.serif9;
+    var sideMargin = EM + 20;
+    var maxPx = PRINT_WIDTH - 2 * sideMargin;
+    var blockPad = EM;
+
+    var lines = [];
+    layoutText(bodyFont, o.fortune, maxPx, lines);
+
+    var ascent = -textBounds(bodyFont, 'Ag').y1;
+    var lineStep = bodyFont.yAdvance;
+
+    var luckyLines = [];
+    if (o.luckyText) wrapPx(smallFont, o.luckyText, maxPx, luckyLines);
+    var smallAscent = -textBounds(smallFont, 'Ag').y1;
+    var smallStep = smallFont.yAdvance;
+
+    // Heading: body size if it fits, else 9pt, else cut short
+    var heading = trim(o.heading || '');
+    if (heading.length === 0) heading = 'FORTUNE';
+    var headFont = bodyFont;
+    if (pxWidth(headFont, heading) > maxPx) {
+      headFont = smallFont;
+      while (heading.length > 1 && pxWidth(headFont, heading) > maxPx) heading = heading.slice(0, -1);
+    }
+    var headAscent = -textBounds(headFont, 'Ag').y1;
+
+    var lineOff = [], bodyH = 0, i;
+    for (i = 0; i < lines.length; i++) {
+      lineOff.push(bodyH);
+      bodyH += lines[i].length ? lineStep : Math.trunc(lineStep / 2);
+    }
+
+    var y = blockPad + BH + 14;
+    var titleTop = y;
+    if (o.showTitle) y += 36;
+    var textTop = y;
+    y += bodyH;
+    var luckyTop = 0;
+    if (luckyLines.length) {
+      y += 8;
+      luckyTop = y;
+      y += luckyLines.length * smallStep;
+    }
+    var height = y + 14 + BH + blockPad;
+
+    var cv = makeCanvas(PRINT_WIDTH, height);
+
+    fillRect(cv, blockPad, blockPad, BW, BH);
+    fillRect(cv, PRINT_WIDTH - blockPad - BW, blockPad, BW, BH);
+    fillRect(cv, blockPad, height - blockPad - BH, BW, BH);
+    fillRect(cv, PRINT_WIDTH - blockPad - BW, height - blockPad - BH, BW, BH);
+
+    function centred(font, str, baseline) {
+      var b = textBounds(font, str);
+      drawText(cv, font, Math.trunc((PRINT_WIDTH - b.w) / 2) - b.x1, baseline, str);
+    }
+
+    if (o.showTitle) centred(headFont, heading, titleTop + headAscent);
+    for (i = 0; i < lines.length; i++) {
+      if (lines[i].length) centred(bodyFont, lines[i], textTop + ascent + lineOff[i]);
+    }
+    for (i = 0; i < luckyLines.length; i++) {
+      centred(smallFont, luckyLines[i], luckyTop + smallAscent + i * smallStep);
+    }
+
+    return { w: PRINT_WIDTH, h: height, px: cv.px, lines: lines.length, luckyLines: luckyLines.length };
+  }
+
+  root.Slip = {
+    PRINT_WIDTH: PRINT_WIDTH,
+    DEFAULTS: DEFAULTS,
+    decodeFont: decodeFont,
+    textBounds: textBounds,
+    pxWidth: pxWidth,
+    foldText: foldText,
+    wrapPx: wrapPx,
+    layoutText: layoutText,
+    makeLucky: makeLucky,
+    renderSlip: renderSlip
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = root.Slip;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+(function () {
+  'use strict';
+  var F = {"serif12":{"first":32,"last":126,"yAdvance":29,"glyphs":[[0,0,0,6,0,1],[0,2,16,8,3,-15],[4,6,6,10,1,-15],[9,12,16,12,0,-15],[33,10,18,12,1,-16],[56,18,17,20,1,-16],[95,17,16,19,1,-15],[129,2,6,5,1,-15],[131,6,20,8,1,-15],[146,6,20,8,1,-15],[161,8,10,12,3,-14],[171,11,11,14,1,-10],[187,3,6,6,2,-2],[190,6,1,8,1,-5],[191,2,3,6,2,-2],[192,7,17,7,0,-16],[207,10,17,12,1,-16],[229,6,17,12,3,-16],[242,10,15,12,1,-14],[261,10,16,12,1,-15],[281,10,16,12,1,-15],[301,10,17,12,1,-16],[323,10,17,12,1,-16],[345,10,16,12,0,-15],[365,10,17,12,1,-16],[387,10,18,12,1,-16],[410,2,12,6,2,-11],[413,4,15,6,2,-11],[421,12,13,14,1,-12],[441,12,6,14,1,-8],[450,12,13,14,1,-11],[470,8,17,11,2,-16],[487,17,16,21,2,-15],[521,17,16,17,0,-15],[555,12,16,15,1,-15],[579,15,16,16,1,-15],[609,16,16,17,0,-15],[641,14,16,15,0,-15],[669,14,16,14,0,-15],[697,16,16,17,1,-15],[729,16,16,17,0,-15],[761,6,16,8,1,-15],[773,8,16,9,0,-15],[789,16,16,17,1,-15],[821,15,16,15,0,-15],[851,19,16,21,1,-15],[889,16,16,17,1,-15],[921,15,16,17,1,-15],[951,12,16,14,0,-15],[975,16,20,17,1,-15],[1015,15,16,16,0,-15],[1045,11,16,13,0,-15],[1067,15,16,15,0,-15],[1097,16,16,17,1,-15],[1129,17,16,17,0,-15],[1163,22,16,23,0,-15],[1207,17,16,17,0,-15],[1241,16,16,17,0,-15],[1273,14,16,15,1,-15],[1301,5,20,8,2,-15],[1314,7,17,7,0,-16],[1329,5,20,8,1,-15],[1342,10,9,11,1,-15],[1354,12,1,12,0,3],[1356,5,4,6,0,-15],[1359,10,11,10,1,-10],[1373,10,17,12,1,-16],[1395,8,11,11,1,-10],[1406,10,17,12,1,-16],[1428,10,11,11,1,-10],[1442,9,17,9,0,-16],[1462,12,16,11,0,-10],[1486,11,17,12,0,-16],[1510,5,16,7,0,-15],[1520,6,21,8,0,-15],[1536,11,17,12,1,-16],[1560,5,17,6,0,-16],[1571,18,11,19,0,-10],[1596,11,11,12,0,-10],[1612,10,11,12,1,-10],[1626,11,16,12,0,-10],[1648,10,16,12,1,-10],[1668,8,11,8,0,-10],[1679,7,11,9,1,-10],[1689,6,13,7,1,-12],[1699,10,11,12,1,-10],[1713,11,11,11,0,-10],[1729,16,11,16,0,-10],[1751,11,11,12,0,-10],[1767,11,16,11,0,-10],[1789,10,11,10,0,-10],[1803,5,21,12,2,-16],[1817,1,17,5,2,-16],[1820,5,21,12,5,-15],[1834,12,3,12,0,-6]],"bitmap":"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"},"serif9":{"first":32,"last":126,"yAdvance":22,"glyphs":[[0,0,0,5,0,1],[0,2,12,6,2,-11],[3,5,4,7,1,-11],[6,9,12,9,0,-11],[20,8,14,9,1,-12],[34,13,12,15,1,-11],[54,13,13,14,1,-12],[76,2,4,4,1,-11],[77,5,15,6,1,-11],[87,5,15,6,0,-11],[97,6,8,9,3,-11],[103,9,9,10,0,-8],[114,2,3,4,2,0],[115,4,1,6,1,-3],[116,2,2,5,1,-1],[117,5,12,5,0,-11],[125,9,13,9,0,-12],[140,5,13,9,2,-12],[149,8,12,9,1,-11],[161,8,12,9,0,-11],[173,7,12,9,1,-11],[184,8,12,9,0,-11],[196,8,13,9,1,-12],[209,8,12,9,0,-11],[221,7,13,9,1,-12],[233,8,14,9,1,-12],[247,2,8,5,1,-7],[249,3,10,5,1,-7],[253,9,9,10,1,-8],[264,9,5,10,1,-6],[270,10,9,10,0,-8],[282,7,13,8,1,-12],[294,12,13,16,2,-12],[314,13,12,13,0,-11],[334,11,12,11,0,-11],[351,11,12,12,1,-11],[368,12,12,13,0,-11],[386,10,12,11,1,-11],[401,9,12,10,1,-11],[415,12,12,13,1,-11],[433,11,12,13,1,-11],[450,4,12,6,1,-11],[456,6,12,7,0,-11],[465,12,12,13,1,-11],[483,10,12,11,1,-11],[498,15,12,16,0,-11],[521,11,12,13,1,-11],[538,11,13,13,1,-12],[556,9,12,10,1,-11],[570,11,16,13,1,-12],[592,11,12,12,1,-11],[609,9,12,10,0,-11],[623,11,12,11,0,-11],[640,11,12,13,1,-11],[657,12,12,13,0,-11],[675,17,12,17,0,-11],[701,13,12,13,0,-11],[721,12,12,13,0,-11],[739,11,12,11,0,-11],[756,3,15,6,2,-11],[762,5,12,5,0,-11],[770,3,15,6,1,-11],[776,8,7,8,0,-11],[783,9,1,9,0,2],[785,4,3,5,0,-11],[787,7,8,8,1,-7],[794,9,13,9,0,-12],[809,7,8,8,0,-7],[816,9,13,9,0,-12],[831,8,8,8,0,-7],[839,7,13,7,1,-12],[851,10,12,8,0,-7],[866,9,13,9,0,-12],[881,4,11,5,1,-10],[887,5,15,6,0,-10],[897,9,13,9,1,-12],[912,4,13,5,1,-12],[919,14,8,14,0,-7],[933,9,8,9,0,-7],[942,9,8,9,0,-7],[951,9,12,9,0,-7],[965,9,12,9,0,-7],[979,6,8,6,0,-7],[985,6,8,7,1,-7],[991,5,9,5,0,-8],[997,9,8,9,0,-7],[1006,8,8,8,0,-7],[1014,12,8,12,0,-7],[1026,9,8,9,0,-7],[1035,8,12,8,0,-7],[1047,7,8,7,1,-7],[1054,5,16,9,1,-12],[1064,1,12,4,1,-11],[1066,5,16,9,3,-11],[1076,9,3,9,0,-5]],"bitmap":"/+oD3vcgEQkEgk/5EIn/JBIJDIAQfNbS0PA4HheTk9Z8EDhDPDkhigxQZTnLILkFiExEZCHADgDIBkAyAaAHeDGHiEaGNDDBxxfPAP4IiIRjGMYQggggggghDGMYxCIiAGOa3HK2CAgEAgEP+EAgEAgA2PDwCIQiEIxCMQAcMZjYPB4PB4PB4NjEYcATjGMYxjGMZ4A8ToYGBgQMCBAgQf48xgYEHD4HAwMDBvgEGHFkyaNG/hgwYA8QIDwOBwMDAwIE+AccMGBg3ObDw8NDZjx/ggICBAQECAgIEBA8jx4+TwY2x48bM8A8ZsLDw8PDYz8GBgw4YPAP2AADKAGHDhwMA4BwDgCA/4AAAA/4gBwBwBwBwODg4MAAeRoYMGCDBBAgQAMAD4OMYCYCx5zJ2J2Z2SbsYAMED4ACABABwBYAmATAQwP4IGEDGB3h8P+GHMGYMwx+DDGDMGYMw3/AHyYdgeAcAYAwBgDADADBj8D/AxwwYwcwMwMwMwMwMwYwz/D/mCYBgGEfxhGAYBgWD/7/sFgMBhP5hMBgMBgeAB8jDmAmAMAMD8BsBsBmBjBg+PHsGYMwZgz/mDMGYMwZg3jw9mZmZmZvPGGGGGGGGG288+YIYQYgZAeAbAZgYwYYYM8/8BgGAYBgGAYBgGAYFgv+8A5wOOBx4WLCxcmJkxMmI4xHGIQziPDg7gnBLCXEnJGSGkHIGQNwIB8GMYMgLAeA8B4DwGgJgxjB8P4xmGw2Gxn4wGAwGB4AHwYxgyAsB4DwHgPAaBmDGMDgDgDgB/4MYYYwxhjGH4NwZwxxh3hwHTGYTAeA4BwHAaDYy8D/+M4YgwBgDAGAMAYAwBgHgPDsCYEwJgTAmBMCYEwIwg+A+HcCMCMEGEGEDIDIBwBwAgAg++ewwIwghhhBjEDLIGWQGnAOOAMcAQQAggD8+YMGEBkA0AMAHAEwEcGGCBnj8Pj2BjBBiB0A0AYAYAYAYAYA8D/MEQYBgHAMAwDgOAYFwX/g+2222224ghCCEIYQhhDttttttvgYHDQmYkLB/4CEIHmYMObZsz8gcBgMBgNxzMNhsNhsY+A8zwYMGBieAQOAwGAx2Z2Gw2GwzGPwPEb+wMDhYjweQYMGHhgwYMGDDwA8GfYxjB4IBAH8QLAuEfggcBgMBgNxzMZjMZjMb3hgAuZmZvAYADOMYxjGMYuAIHAYDAYDPYjYeDYZjG94LmZmZmZm8O5xzmYxmMZjGYxmMb3v7jmYzGYzGY3vPjGweDweDYx87jmYbDYbDYz8YDAYHgA9MbDYbDYbjP4DAYDA8G3GGGGGPHY4WD44/ieYxjGMOOcxmMxmMxmMf/NhIjIUHAgI7zZhYiIyNUGcGIEI9xIOAwHBIQnP82FiMjQUHAgICBDg/Rhggwxw/hmMYxjEYYxjGMP/8MMYxjGEMxjGMZhwJMHA"}};
+  var fonts = { serif12: Slip.decodeFont(F.serif12), serif9: Slip.decodeFont(F.serif9) };
+  var $ = function (id) { return document.getElementById(id); };
+
+  // Where the packs live. On GitHub Pages this is worked out from the address.
+  var cfg = { owner: 'nilltronic', repo: 'fortune', dir: 'packs' };
+  if (/\.github\.io$/.test(location.hostname)) {
+    cfg.owner = location.hostname.split('.')[0];
+    var seg = location.pathname.split('/')[1];
+    if (seg && seg.indexOf('.') < 0) cfg.repo = seg;
+  }
+  $('repoLink').href = 'https://github.com/' + cfg.owner + '/' + cfg.repo;
+
+  function parsePack(text) {
+    var heading = '', lucky = 'follow', entries = [], inHeader = true;
+    text.replace(/\r/g, '').split('\n').forEach(function (raw) {
+      var l = raw.trim();
+      if (!l) return;
+      if (inHeader && l[0] === '#') {
+        var b = l.slice(1).trim(), low = b.toLowerCase();
+        if (low.indexOf('lucky:') === 0) {
+          var v = low.slice(6).trim();
+          if (['off', 'no', '0', 'false'].indexOf(v) >= 0) lucky = 'off';
+          else if (['on', 'yes', '1', 'true'].indexOf(v) >= 0) lucky = 'on';
+        } else if (!heading && b) heading = b;
+        return;
+      }
+      inHeader = false;
+      if (l[0] !== '#') entries.push(l);
+    });
+    while (heading.slice(-1) === '.') heading = heading.slice(0, -1);
+    return { heading: heading.trim().slice(0, 32), lucky: lucky, entries: entries };
+  }
+
+  function draw(cv, pack, idx) {
+    var raw = Slip.foldText(pack.entries[idx]).text.replace(/\n/g, '');
+    var s = Slip.renderSlip({
+      fonts: fonts, fortune: raw, heading: pack.heading, showTitle: true,
+      luckyText: pack.lucky === 'on' ? Slip.makeLucky(Math.random) : '', bigText: true
+    });
+    cv.width = s.w; cv.height = s.h;
+    var ctx = cv.getContext('2d'), img = ctx.createImageData(s.w, s.h);
+    for (var i = 0; i < s.px.length; i++) {
+      var v = s.px[i] ? 24 : 255;
+      img.data[i * 4] = v; img.data[i * 4 + 1] = v; img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function addCard(name, text) {
+    var pack = parsePack(text);
+    if (!pack.entries.length) return;
+    var card = document.createElement('section');
+    card.className = 'card pack';
+
+    var h = document.createElement('h3');
+    h.textContent = pack.heading || name.replace(/\.txt$/, '');
+    card.appendChild(h);
+
+    var paper = document.createElement('div'); paper.className = 'paper';
+    var cv = document.createElement('canvas'); paper.appendChild(cv); card.appendChild(paper);
+    var idx = Math.floor(Math.random() * pack.entries.length);
+    draw(cv, pack, idx);
+
+    var meta = document.createElement('div'); meta.className = 'meta';
+    meta.textContent = pack.entries.length + ' entries · ' + (text.length / 1024).toFixed(1) + ' KB · ' + name;
+    card.appendChild(meta);
+
+    var row = document.createElement('div'); row.className = 'row';
+    var dl = document.createElement('a'); dl.className = 'btn'; dl.textContent = 'Download';
+    dl.href = cfg.dir + '/' + name; dl.setAttribute('download', name);
+    var ed = document.createElement('a'); ed.className = 'btn alt'; ed.textContent = 'Open in editor';
+    ed.href = 'editor.html?pack=' + encodeURIComponent(cfg.dir + '/' + name).replace(/%2F/g, '/');
+    var nx = document.createElement('button'); nx.className = 'btn quiet'; nx.textContent = 'Another sample';
+    nx.onclick = function () { idx = (idx + 1 + Math.floor(Math.random() * Math.max(1, pack.entries.length - 1))) % pack.entries.length; draw(cv, pack, idx); };
+    row.appendChild(dl); row.appendChild(ed); row.appendChild(nx);
+    card.appendChild(row);
+    card._title = (pack.heading || name).toLowerCase();
+    $('packs').appendChild(card);
+  }
+
+  var api = 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + cfg.dir;
+  fetch(api)
+    .then(function (r) { if (!r.ok) throw new Error('GitHub answered ' + r.status); return r.json(); })
+    .then(function (list) {
+      var files = list.filter(function (f) { return f.type === 'file' && /\.txt$/i.test(f.name); });
+      if (!files.length) { $('status').textContent = 'No packs found yet.'; return; }
+      return Promise.all(files.map(function (f) {
+        return fetch(cfg.dir + '/' + f.name).then(function (r) { return r.text(); }).then(function (t) { return { name: f.name, text: t }; });
+      })).then(function (all) {
+        all.sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+        all.forEach(function (p) { addCard(p.name, p.text); });
+        $('status').style.display = 'none';
+      });
+    })
+    .catch(function (e) {
+      $('status').innerHTML = 'Could not load the pack list (' + String(e.message || e).replace(/</g, '&lt;') + '). ' +
+        'You can still browse them on <a href="https://github.com/' + cfg.owner + '/' + cfg.repo + '/tree/main/' + cfg.dir + '">GitHub</a>.';
+    });
+})();
+</script>
+</body>
+</html>
