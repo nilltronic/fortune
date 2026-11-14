@@ -1,14 +1,4 @@
-# Cat Printer Fortune Teller
-
-Press a button an the esp32 to receive a printed fortune on the cat printer.
-
-ToDo:
-
-Upload sketch
-
-Add site link in the web ui of the esp sketch
-
-Add the editing tool
+# Fortune Printer
 
 My arduino ide settings for esp32 c6
 
@@ -75,7 +65,3 @@ The library page finds packs by itself, so adding a `.txt` file to `packs/` is a
 ## Publishing the site (GitHub Pages)
 
 In the repository: **Settings → Pages → Build and deployment → Deploy from a branch**, pick `main` and `/ (root)`. After a minute the site is live at `https://<your-user>.github.io/<repo>/`. The pages work out the repository name from their own address, so nothing needs editing.
-
-## Older printer firmware
-
-Earlier versions of the Fortune Printer sketch fetched a single `fortunes.txt` from the top of this repo. If you still have one of those, keep that file in the repo root.
