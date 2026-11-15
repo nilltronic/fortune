@@ -22,13 +22,13 @@ If you'd rather write it by hand, follow the format in the [README](README.md#th
 These slips end up on paper in people's homes, classrooms and workshops.
 
 - **Original or freely licensed only.** Don't copy from books, websites, other fortune lists or joke collections unless the licence clearly allows it. If you're not sure, write your own.
-- **Family friendly.** No hate, harassment, sexual content, graphic violence, or anything aimed at a real person.
+- ** Family-friendly. ** No hate, harassment, sexual content, graphic violence, or anything aimed at a real person.
 - **No personal information** and no advertising or links.
 - **Take care with health and money.** Kind words are welcome; advice that could cause harm is not.
 
 ## 4. Licence
 
-By submitting a pack you agree to release it under **CC0 1.0** (public domain), the same as the rest of the packs.
+By submitting a pack, you agree to release it under **CC0 1.0** (public domain), the same as the rest of the packs.
 
 ## 5. Submit it
 
@@ -41,3 +41,7 @@ A maintainer will check the format and the content rules, then merge it. Once me
 ## Fixing or improving a pack
 
 Open the pack in the editor (**Open in editor** on the library page), make your changes, download it, and upload it over the old file in a pull request.
+
+## Thanks to
+
+Added fortunes from https://joshmadison.com/2008/04/20/fortune-cookie-fortunes/. They have been edited slightly for clarity, but I have tried to keep the quirky feel of the originals.
