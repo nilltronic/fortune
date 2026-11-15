@@ -2,13 +2,9 @@
 
 Print fortunes at the touch of a button, wirelessly to a cheap Bluetooth CAT printer using an ESP32.
 
-My arduino ide settings for esp32 c6
+<img width="347" height="465" alt="Screenshot 2026-11-15 140018" src="https://github.com/user-attachments/assets/b1f8e69e-c1e9-473b-b759-73b0bcadf87a" />
 
-<img width="462" height="361" alt="Screenshot 2026-10-18 060207" src="https://github.com/user-attachments/assets/0b7d62ec-7f69-4546-97ee-a79b94d93e59" />
-
-Added fortunes from
-https://joshmadison.com/2008/04/20/fortune-cookie-fortunes/
-they have been edited slightly, but I have tried to keep the feel of the originals.
+Join the access point the ESP32 creates to upload different fortunes. Why not use the fortune editor to create your own?
 
 # Fortune Printer Packs
 
