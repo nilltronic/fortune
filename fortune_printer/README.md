@@ -31,6 +31,8 @@ WiFi, the web server, mDNS and LittleFS all come with the ESP32 board package. T
 
 ### 2. Board settings
 
+<img width="462" height="361" alt="Screenshot 2026-10-18 060207" src="https://github.com/user-attachments/assets/0b7d62ec-7f69-4546-97ee-a79b94d93e59" />
+
 | Setting | Value |
 | --- | --- |
 | Board | **ESP32C6 Dev Module** |
